@@ -1,0 +1,313 @@
+openapi: 3.1.0
+info:
+  title: openapi-ec
+  version: 1.0.0
+  description: API normalizada para integraciones internas con Contifico.
+servers:
+  - url: http://localhost:8081/api
+components:
+  securitySchemes:
+    InternalBearer:
+      type: http
+      scheme: bearer
+  parameters:
+    Provider:
+      name: provider
+      in: query
+      required: true
+      schema:
+        type: string
+        enum: [contifico]
+    ProviderApiKey:
+      name: X-Provider-Api-Key
+      in: header
+      required: true
+      schema:
+        type: string
+    ProviderPosToken:
+      name: X-Provider-Pos-Token
+      in: header
+      required: false
+      schema:
+        type: string
+  schemas:
+    OperationResult:
+      type: object
+      properties:
+        provider: { type: string }
+        operation: { type: string }
+        externalId: { type: [string, 'null'] }
+        status: { type: string }
+        data: { type: object, additionalProperties: true }
+        providerResponse: { type: object, additionalProperties: true }
+    ProviderCredentials:
+      type: object
+      required: [apiKey]
+      properties:
+        apiKey: { type: string }
+        posToken: { type: [string, 'null'] }
+    ContactWrite:
+      type: object
+      required: [provider, credentials, data]
+      properties:
+        provider: { type: string, enum: [contifico] }
+        credentials:
+          $ref: '#/components/schemas/ProviderCredentials'
+        data:
+          type: object
+          required: [name, identification]
+          properties:
+            name: { type: string }
+            commercialName: { type: [string, 'null'] }
+            identification:
+              type: object
+              required: [type, value]
+              properties:
+                type: { type: string, enum: [CEDULA, RUC, PASAPORTE, CONSUMIDOR_FINAL] }
+                value: { type: string }
+            email: { type: [string, 'null'] }
+            phone: { type: [string, 'null'] }
+            address: { type: [string, 'null'] }
+            isCustomer: { type: boolean }
+            isSupplier: { type: boolean }
+            status: { type: string, enum: [A, I] }
+    ProductWrite:
+      type: object
+      required: [provider, credentials, data]
+      properties:
+        provider: { type: string, enum: [contifico] }
+        credentials:
+          $ref: '#/components/schemas/ProviderCredentials'
+        data:
+          type: object
+          required: [code, name, type, price]
+          properties:
+            code: { type: string }
+            name: { type: string }
+            type: { type: string, enum: [PRO, SER] }
+            price: { type: number }
+            taxRate: { type: number }
+            stock: { type: number }
+            status: { type: string, enum: [A, I] }
+    InvoiceWrite:
+      type: object
+      required: [provider, credentials, data]
+      properties:
+        provider: { type: string, enum: [contifico] }
+        credentials:
+          $ref: '#/components/schemas/ProviderCredentials'
+        data:
+          type: object
+          required: [number, issuedAt, customer, items]
+          properties:
+            number: { type: string }
+            issuedAt: { type: string, format: date }
+            authorization: { type: [string, 'null'] }
+            description: { type: [string, 'null'] }
+            reference: { type: [string, 'null'] }
+            status: { type: string }
+            customer:
+              type: object
+              required: [name, identification]
+              properties:
+                name: { type: string }
+                email: { type: [string, 'null'] }
+                phone: { type: [string, 'null'] }
+                address: { type: [string, 'null'] }
+                identification:
+                  type: object
+                  required: [type, value]
+                  properties:
+                    type: { type: string, enum: [CEDULA, RUC, PASAPORTE, CONSUMIDOR_FINAL] }
+                    value: { type: string }
+            items:
+              type: array
+              items:
+                type: object
+                required: [productExternalId, quantity, unitPrice]
+                properties:
+                  productExternalId: { type: string }
+                  quantity: { type: number }
+                  unitPrice: { type: number }
+                  taxRate: { type: number }
+                  discountPercentage: { type: number }
+    PaymentWrite:
+      type: object
+      required: [provider, credentials, data]
+      properties:
+        provider: { type: string, enum: [contifico] }
+        credentials:
+          $ref: '#/components/schemas/ProviderCredentials'
+        data:
+          type: object
+          required: [method, amount]
+          properties:
+            method: { type: string, enum: [EF, CQ, TC, TRA] }
+            amount: { type: number }
+            paidAt: { type: [string, 'null'], format: date }
+            reference: { type: [string, 'null'] }
+            bankAccountId: { type: [string, 'null'] }
+            checkNumber: { type: [string, 'null'] }
+            cardProcessor: { type: [string, 'null'], enum: [D, M, E, P, A] }
+security:
+  - InternalBearer: []
+paths:
+  /v1/contacts:
+    get:
+      parameters:
+        - $ref: '#/components/parameters/Provider'
+        - $ref: '#/components/parameters/ProviderApiKey'
+        - $ref: '#/components/parameters/ProviderPosToken'
+      responses:
+        '200':
+          description: Contact list
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactWrite'
+      responses:
+        '200':
+          description: Contact created
+  /v1/contacts/{id}:
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/Provider'
+        - $ref: '#/components/parameters/ProviderApiKey'
+      responses:
+        '200': { description: Contact detail }
+    put:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContactWrite'
+      responses:
+        '200': { description: Contact updated }
+  /v1/products:
+    get:
+      parameters:
+        - $ref: '#/components/parameters/Provider'
+        - $ref: '#/components/parameters/ProviderApiKey'
+      responses:
+        '200': { description: Product list }
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductWrite'
+      responses:
+        '200': { description: Product created }
+  /v1/products/{id}:
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/Provider'
+        - $ref: '#/components/parameters/ProviderApiKey'
+      responses:
+        '200': { description: Product detail }
+    put:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductWrite'
+      responses:
+        '200': { description: Product updated }
+  /v1/products/{id}/stock:
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/Provider'
+        - $ref: '#/components/parameters/ProviderApiKey'
+      responses:
+        '200': { description: Product stock }
+  /v1/invoices:
+    get:
+      parameters:
+        - $ref: '#/components/parameters/Provider'
+        - $ref: '#/components/parameters/ProviderApiKey'
+      responses:
+        '200': { description: Invoice list }
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceWrite'
+      responses:
+        '200': { description: Invoice created }
+  /v1/invoices/{id}:
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/Provider'
+        - $ref: '#/components/parameters/ProviderApiKey'
+      responses:
+        '200': { description: Invoice detail }
+  /v1/invoices/{id}/status:
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/Provider'
+        - $ref: '#/components/parameters/ProviderApiKey'
+      responses:
+        '200': { description: Invoice status }
+  /v1/invoices/{invoiceId}/payments:
+    get:
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/Provider'
+        - $ref: '#/components/parameters/ProviderApiKey'
+      responses:
+        '200': { description: Invoice payments }
+    post:
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentWrite'
+      responses:
+        '200': { description: Payment created }
