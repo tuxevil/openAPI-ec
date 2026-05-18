@@ -117,6 +117,89 @@ Para Payphone:
 - `GET /api/v1/payment-gateways/transactions/{transactionId}`
 - `POST /api/v1/payment-gateways/reversals`
 
+## Ejemplos Payphone
+
+### 1. Crear link de pago
+
+```bash
+curl -X POST http://localhost:8081/api/v1/payment-gateways/links \
+  -H 'Authorization: Bearer token-nexos' \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -d '{
+    "provider": "payphone",
+    "credentials": {
+      "bearerToken": "payphone-production-token"
+    },
+    "data": {
+      "reference": "Pago orden #12345",
+      "clientTransactionId": "NEXOS-ORDER-12345",
+      "amount": 11500,
+      "amountWithTax": 10000,
+      "amountWithoutTax": 0,
+      "tax": 1500,
+      "notifyUrl": "https://nexos.example.com/webhooks/payphone"
+    }
+  }'
+```
+
+Respuesta esperada:
+
+```json
+{
+  "provider": "payphone",
+  "operation": "payment-gateways.link.create",
+  "externalId": "NEXOS-ORDER-12345",
+  "status": "pending",
+  "data": {
+    "url": "https://payp.hn/x/ejemplo123",
+    "clientTransactionId": "NEXOS-ORDER-12345",
+    "reference": "Pago orden #12345",
+    "amount": 11500,
+    "amountWithTax": 10000,
+    "amountWithoutTax": 0,
+    "tax": 1500,
+    "notifyUrl": "https://nexos.example.com/webhooks/payphone"
+  },
+  "providerResponse": {}
+}
+```
+
+### 2. Consultar estado de transaccion
+
+```bash
+curl "http://localhost:8081/api/v1/payment-gateways/transactions/123456789?provider=payphone" \
+  -H 'Authorization: Bearer token-nexos' \
+  -H 'Accept: application/json' \
+  -H 'X-Gateway-Bearer: payphone-production-token'
+```
+
+### 3. Reversar transaccion
+
+```bash
+curl -X POST http://localhost:8081/api/v1/payment-gateways/reversals \
+  -H 'Authorization: Bearer token-nexos' \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -d '{
+    "provider": "payphone",
+    "credentials": {
+      "bearerToken": "payphone-production-token"
+    },
+    "data": {
+      "transactionId": 123456789,
+      "clientTransactionId": "NEXOS-ORDER-12345"
+    }
+  }'
+```
+
+### Flujo recomendado para sistemas internos
+
+1. Crear `Sale` o `Link` con un `clientTransactionId` propio del sistema.
+2. Guardar `externalId` y `clientTransactionId` para conciliacion interna.
+3. Consultar `GET /payment-gateways/transactions/{transactionId}` hasta obtener `success` o `error`.
+4. Reversar solo cuando el negocio realmente requiera anular el cobro completo.
+
 ## Respuesta estandar
 
 Las respuestas exitosas siguen esta forma:

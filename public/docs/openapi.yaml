@@ -392,26 +392,107 @@ paths:
         '200': { description: Payment created }
   /v1/payment-gateways/sales:
     post:
+      summary: Crear cobro directo Payphone
+      description: Crea un cobro directo hacia la app Payphone del cliente. Los montos se envian en centavos enteros.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/PayphoneSaleWrite'
+            examples:
+              nexosSale:
+                summary: Cobro directo desde nexOS
+                value:
+                  provider: payphone
+                  credentials:
+                    bearerToken: payphone-production-token
+                  data:
+                    phoneNumber: "0999999999"
+                    countryCode: "593"
+                    reference: "Pago orden #12345"
+                    clientTransactionId: "NEXOS-ORDER-12345"
+                    amount: 11500
+                    amountWithTax: 10000
+                    amountWithoutTax: 0
+                    tax: 1500
+                    responseUrl: "https://nexos.example.com/webhooks/payphone"
       responses:
-        '200': { description: Payphone sale created }
+        '200':
+          description: Payphone sale created
+          content:
+            application/json:
+              examples:
+                pendingSale:
+                  value:
+                    provider: payphone
+                    operation: payment-gateways.sale.create
+                    externalId: "123456789"
+                    status: pending
+                    data:
+                      transactionId: 123456789
+                      clientTransactionId: NEXOS-ORDER-12345
+                      reference: "Pago orden #12345"
+                      amount: 11500
+                      amountWithTax: 10000
+                      amountWithoutTax: 0
+                      tax: 1500
+                      phoneNumber: "0999999999"
+                      countryCode: "593"
+                    providerResponse:
+                      transactionId: 123456789
   /v1/payment-gateways/links:
     post:
+      summary: Crear link de pago Payphone
+      description: Genera una URL de cobro compartible. Los montos se envian en centavos enteros.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/PayphoneLinkWrite'
+            examples:
+              ampLink:
+                summary: Link de pago desde AMP
+                value:
+                  provider: payphone
+                  credentials:
+                    bearerToken: payphone-production-token
+                  data:
+                    reference: "Pago orden #12345"
+                    clientTransactionId: "AMP-ORDER-12345"
+                    amount: 11500
+                    amountWithTax: 10000
+                    amountWithoutTax: 0
+                    tax: 1500
+                    notifyUrl: "https://amp.example.com/webhooks/payphone"
       responses:
-        '200': { description: Payphone payment link created }
+        '200':
+          description: Payphone payment link created
+          content:
+            application/json:
+              examples:
+                pendingLink:
+                  value:
+                    provider: payphone
+                    operation: payment-gateways.link.create
+                    externalId: "AMP-ORDER-12345"
+                    status: pending
+                    data:
+                      url: "https://payp.hn/x/ejemplo123"
+                      clientTransactionId: AMP-ORDER-12345
+                      reference: "Pago orden #12345"
+                      amount: 11500
+                      amountWithTax: 10000
+                      amountWithoutTax: 0
+                      tax: 1500
+                      notifyUrl: "https://amp.example.com/webhooks/payphone"
+                    providerResponse:
+                      url: "https://payp.hn/x/ejemplo123"
   /v1/payment-gateways/transactions/{transactionId}:
     get:
+      summary: Consultar transaccion Payphone
+      description: Devuelve el estado actual del cobro y normaliza Approved, Pending, Canceled y Rejected.
       parameters:
         - name: transactionId
           in: path
@@ -420,14 +501,69 @@ paths:
         - $ref: '#/components/parameters/GatewayProvider'
         - $ref: '#/components/parameters/GatewayBearer'
       responses:
-        '200': { description: Payphone transaction status }
+        '200':
+          description: Payphone transaction status
+          content:
+            application/json:
+              examples:
+                approvedTransaction:
+                  value:
+                    provider: payphone
+                    operation: payment-gateways.transaction.get
+                    externalId: "123456789"
+                    status: success
+                    data:
+                      transactionId: 123456789
+                      clientTransactionId: NEXOS-ORDER-12345
+                      transactionStatus: Approved
+                      amount: 11500
+                      currency: USD
+                      authorizationCode: "AUTH-001"
+                      message: "Approved"
+                      date: "2026-05-18T15:30:00Z"
+                    providerResponse:
+                      transactionId: 123456789
+                      clientTransactionId: NEXOS-ORDER-12345
+                      transactionStatus: Approved
+                      amount: 11500
+                      currency: USD
   /v1/payment-gateways/reversals:
     post:
+      summary: Reversar transaccion Payphone
+      description: Solicita el reverso total de una transaccion previamente procesada.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/PayphoneReverseWrite'
+            examples:
+              nanoReverse:
+                summary: Reverso desde nano
+                value:
+                  provider: payphone
+                  credentials:
+                    bearerToken: payphone-production-token
+                  data:
+                    transactionId: 123456789
+                    clientTransactionId: "NANO-ORDER-12345"
       responses:
-        '200': { description: Payphone reversal created }
+        '200':
+          description: Payphone reversal created
+          content:
+            application/json:
+              examples:
+                successfulReverse:
+                  value:
+                    provider: payphone
+                    operation: payment-gateways.reversal.create
+                    externalId: "123456789"
+                    status: success
+                    data:
+                      transactionId: 123456789
+                      clientTransactionId: NANO-ORDER-12345
+                      status: Success
+                      message: "Transaccion reversada exitosamente"
+                    providerResponse:
+                      status: Success
+                      message: "Transaccion reversada exitosamente"
