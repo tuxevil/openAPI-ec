@@ -15,20 +15,15 @@ class ProviderQueryRequest extends FormRequest
     {
         $this->merge([
             'provider' => $this->query('provider'),
-            'credentials' => [
-                'apiKey' => $this->header('X-Provider-Api-Key'),
-                'posToken' => $this->header('X-Provider-Pos-Token'),
-            ],
+            'credentials' => $this->headerCredentials(),
         ]);
     }
 
     public function rules(): array
     {
-        return [
-            'provider' => ['required', 'in:contifico'],
-            'credentials.apiKey' => ['required', 'string'],
-            'credentials.posToken' => ['nullable', 'string'],
-        ];
+        return array_merge([
+            'provider' => ['required', 'in:'.implode(',', $this->allowedProviders())],
+        ], $this->credentialRules());
     }
 
     public function provider(): string
@@ -39,5 +34,26 @@ class ProviderQueryRequest extends FormRequest
     public function credentials(): array
     {
         return $this->validated('credentials');
+    }
+
+    protected function allowedProviders(): array
+    {
+        return ['contifico'];
+    }
+
+    protected function credentialRules(): array
+    {
+        return [
+            'credentials.apiKey' => ['required', 'string'],
+            'credentials.posToken' => ['nullable', 'string'],
+        ];
+    }
+
+    protected function headerCredentials(): array
+    {
+        return [
+            'apiKey' => $this->header('X-Provider-Api-Key'),
+            'posToken' => $this->header('X-Provider-Pos-Token'),
+        ];
     }
 }

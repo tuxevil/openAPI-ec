@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\DocsController;
 use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\InvoicePaymentController;
+use App\Http\Controllers\Api\V1\PaymentGatewayController;
 use App\Http\Controllers\Api\V1\ProductController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +27,11 @@ Route::middleware('internal.auth')->prefix('v1')->group(function (): void {
 
     Route::get('/invoices/{invoiceId}/payments', [InvoicePaymentController::class, 'index']);
     Route::post('/invoices/{invoiceId}/payments', [InvoicePaymentController::class, 'store']);
+
+    Route::post('/payment-gateways/sales', [PaymentGatewayController::class, 'storeSale']);
+    Route::post('/payment-gateways/links', [PaymentGatewayController::class, 'storeLink']);
+    Route::get('/payment-gateways/transactions/{transactionId}', [PaymentGatewayController::class, 'showTransaction']);
+    Route::post('/payment-gateways/reversals', [PaymentGatewayController::class, 'storeReversal']);
 });
 
 Route::get('/docs/openapi.yaml', [DocsController::class, 'openapi']);

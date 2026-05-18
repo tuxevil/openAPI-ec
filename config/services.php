@@ -40,4 +40,9 @@ return [
         'timeout' => (int) env('CONTIFICO_TIMEOUT', 30),
     ],
 
+    'payphone' => [
+        'base_url' => env('PAYPHONE_BASE_URL', 'https://pay.payphonetodoesposible.com/api'),
+        'timeout' => (int) env('PAYPHONE_TIMEOUT', 30),
+    ],
+
 ];

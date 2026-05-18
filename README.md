@@ -1,8 +1,11 @@
 # openAPI-ec
 
-Servicio Laravel API-first para exponer una capa OpenAPI unificada sobre proveedores contables ecuatorianos. La v1 implementa **Contifico** y cubre **contactos**, **productos**, **facturas** y **pagos**.
+Servicio Laravel API-first para exponer una capa OpenAPI unificada sobre proveedores ecuatorianos. Hoy incluye dos subsistemas:
 
-La API esta pensada para ser consumida por sistemas internos como `nexOS`, `AMP` y `nano` usando un bearer token propio por sistema. La seleccion del proveedor es **por request** y las credenciales del proveedor **no se persisten**.
+- **Contabilidad** con **Contifico** para contactos, productos, facturas y pagos contables.
+- **Payment gateways** con **Payphone** para cobros directos, links, consulta de transacciones y reversos.
+
+La API esta pensada para ser consumida por sistemas internos como `nexOS`, `AMP` y `nano` usando un bearer token propio por sistema. La seleccion del proveedor es **por request** y las credenciales externas **no se persisten**.
 
 ## Stack
 
@@ -27,6 +30,16 @@ El servicio sigue el enfoque `Adapter + Strategy + Factory`:
 
 Esto deja lista la base para agregar otros proveedores ecuatorianos sin tocar la API publica.
 
+## Subsistemas
+
+### Contabilidad
+
+Usa `provider=contifico` y credenciales de Contifico por request.
+
+### Payment gateways
+
+Usa `provider=payphone` y bearer token Payphone por request. Este subsistema trabaja con montos en **centavos enteros**.
+
 ## Autenticacion interna
 
 Cada sistema interno debe autenticarse con:
@@ -41,15 +54,19 @@ Los tokens se configuran en `.env` con:
 INTERNAL_BEARER_TOKENS='{"nexOS":"token-nexos","AMP":"token-amp","nano":"token-nano"}'
 ```
 
-## Credenciales del proveedor
+## Credenciales externas
 
 ### GET
 
-En operaciones `GET`, el proveedor viaja en query y las credenciales en headers:
+En operaciones `GET`, el proveedor viaja en query y las credenciales viajan en headers segun el subsistema:
 
-- `provider=contifico`
-- `X-Provider-Api-Key: <api-key>`
-- `X-Provider-Pos-Token: <pos-token>` cuando aplique
+- Contifico:
+  - `provider=contifico`
+  - `X-Provider-Api-Key: <api-key>`
+  - `X-Provider-Pos-Token: <pos-token>` cuando aplique
+- Payphone:
+  - `provider=payphone`
+  - `X-Gateway-Bearer: <payphone-bearer-token>`
 
 ### POST y PUT
 
@@ -61,6 +78,18 @@ En operaciones `POST` y `PUT`, el body debe incluir:
   "credentials": {
     "apiKey": "tu-api-key",
     "posToken": "tu-pos-token"
+  },
+  "data": {}
+}
+```
+
+Para Payphone:
+
+```json
+{
+  "provider": "payphone",
+  "credentials": {
+    "bearerToken": "tu-payphone-token"
   },
   "data": {}
 }
@@ -83,6 +112,10 @@ En operaciones `POST` y `PUT`, el body debe incluir:
 - `GET /api/v1/invoices/{id}/status`
 - `GET /api/v1/invoices/{invoiceId}/payments`
 - `POST /api/v1/invoices/{invoiceId}/payments`
+- `POST /api/v1/payment-gateways/sales`
+- `POST /api/v1/payment-gateways/links`
+- `GET /api/v1/payment-gateways/transactions/{transactionId}`
+- `POST /api/v1/payment-gateways/reversals`
 
 ## Respuesta estandar
 
@@ -135,6 +168,8 @@ Revisar y ajustar:
 - `INTERNAL_BEARER_TOKENS`
 - `CONTIFICO_BASE_URL`
 - `CONTIFICO_TIMEOUT`
+- `PAYPHONE_BASE_URL`
+- `PAYPHONE_TIMEOUT`
 
 ## Testing
 
@@ -144,9 +179,9 @@ La suite cubre:
 - resolucion de proveedores
 - validaciones requeridas
 - normalizacion de respuestas
-- integraciones con `Http::fake()` para contactos, productos, facturas y pagos
+- integraciones con `Http::fake()` para contactos, productos, facturas, pagos contables y Payphone
 
 ## Notas
 
 - El contenedor publica en `8081` porque `8080` ya estaba ocupado en este entorno.
-- La implementacion actual soporta solo `contifico`, pero la estructura ya esta preparada para sumar nuevos adaptadores.
+- Payphone se implementa como subsistema separado de gateway de pagos, no como proveedor contable.

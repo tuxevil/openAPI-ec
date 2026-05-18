@@ -13,12 +13,10 @@ class ProviderBodyRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
-            'provider' => ['required', 'in:contifico'],
-            'credentials.apiKey' => ['required', 'string'],
-            'credentials.posToken' => ['nullable', 'string'],
+        return array_merge([
+            'provider' => ['required', 'in:'.implode(',', $this->allowedProviders())],
             'data' => ['required', 'array'],
-        ];
+        ], $this->credentialRules());
     }
 
     public function provider(): string
@@ -34,5 +32,18 @@ class ProviderBodyRequest extends FormRequest
     public function payload(): array
     {
         return $this->validated('data');
+    }
+
+    protected function allowedProviders(): array
+    {
+        return ['contifico'];
+    }
+
+    protected function credentialRules(): array
+    {
+        return [
+            'credentials.apiKey' => ['required', 'string'],
+            'credentials.posToken' => ['nullable', 'string'],
+        ];
     }
 }

@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: openapi-ec
   version: 1.0.0
-  description: API normalizada para integraciones internas con Contifico.
+  description: API normalizada para integraciones internas con Contifico y Payphone.
 servers:
   - url: http://localhost:8081/api
 components:
@@ -30,6 +30,19 @@ components:
       required: false
       schema:
         type: string
+    GatewayProvider:
+      name: provider
+      in: query
+      required: true
+      schema:
+        type: string
+        enum: [payphone]
+    GatewayBearer:
+      name: X-Gateway-Bearer
+      in: header
+      required: true
+      schema:
+        type: string
   schemas:
     OperationResult:
       type: object
@@ -46,6 +59,11 @@ components:
       properties:
         apiKey: { type: string }
         posToken: { type: [string, 'null'] }
+    GatewayCredentials:
+      type: object
+      required: [bearerToken]
+      properties:
+        bearerToken: { type: string }
     ContactWrite:
       type: object
       required: [provider, credentials, data]
@@ -149,6 +167,67 @@ components:
             bankAccountId: { type: [string, 'null'] }
             checkNumber: { type: [string, 'null'] }
             cardProcessor: { type: [string, 'null'], enum: [D, M, E, P, A] }
+    PayphoneSaleWrite:
+      type: object
+      required: [provider, credentials, data]
+      properties:
+        provider: { type: string, enum: [payphone] }
+        credentials:
+          $ref: '#/components/schemas/GatewayCredentials'
+        data:
+          type: object
+          required: [phoneNumber, countryCode, reference, clientTransactionId, amount, amountWithTax, amountWithoutTax, tax]
+          properties:
+            phoneNumber: { type: string }
+            countryCode: { type: string }
+            clientUserId: { type: [string, 'null'] }
+            documentId: { type: [string, 'null'] }
+            email: { type: [string, 'null'], format: email }
+            reference: { type: string }
+            responseUrl: { type: [string, 'null'], format: uri }
+            amount: { type: integer }
+            amountWithTax: { type: integer }
+            amountWithoutTax: { type: integer }
+            tax: { type: integer }
+            clientTransactionId: { type: string }
+            storeId: { type: [string, 'null'], format: uuid }
+            terminalId: { type: [string, 'null'] }
+    PayphoneLinkWrite:
+      type: object
+      required: [provider, credentials, data]
+      properties:
+        provider: { type: string, enum: [payphone] }
+        credentials:
+          $ref: '#/components/schemas/GatewayCredentials'
+        data:
+          type: object
+          required: [reference, clientTransactionId, amount, amountWithTax, amountWithoutTax, tax]
+          properties:
+            reference: { type: string }
+            clientTransactionId: { type: string }
+            amount: { type: integer }
+            amountWithTax: { type: integer }
+            amountWithoutTax: { type: integer }
+            tax: { type: integer }
+            expireIn: { type: [integer, 'null'] }
+            notifyUrl: { type: [string, 'null'], format: uri }
+            storeId: { type: [string, 'null'], format: uuid }
+            terminalId: { type: [string, 'null'] }
+            documentId: { type: [string, 'null'] }
+            email: { type: [string, 'null'], format: email }
+    PayphoneReverseWrite:
+      type: object
+      required: [provider, credentials, data]
+      properties:
+        provider: { type: string, enum: [payphone] }
+        credentials:
+          $ref: '#/components/schemas/GatewayCredentials'
+        data:
+          type: object
+          required: [transactionId, clientTransactionId]
+          properties:
+            transactionId: { type: integer }
+            clientTransactionId: { type: string }
 security:
   - InternalBearer: []
 paths:
@@ -311,3 +390,44 @@ paths:
               $ref: '#/components/schemas/PaymentWrite'
       responses:
         '200': { description: Payment created }
+  /v1/payment-gateways/sales:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayphoneSaleWrite'
+      responses:
+        '200': { description: Payphone sale created }
+  /v1/payment-gateways/links:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayphoneLinkWrite'
+      responses:
+        '200': { description: Payphone payment link created }
+  /v1/payment-gateways/transactions/{transactionId}:
+    get:
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/GatewayProvider'
+        - $ref: '#/components/parameters/GatewayBearer'
+      responses:
+        '200': { description: Payphone transaction status }
+  /v1/payment-gateways/reversals:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayphoneReverseWrite'
+      responses:
+        '200': { description: Payphone reversal created }
