@@ -7,8 +7,7 @@ class ProviderCredentials
     public function __construct(
         public readonly string $apiKey,
         public readonly ?string $posToken = null,
-    ) {
-    }
+    ) {}
 
     public static function fromArray(array $data): self
     {

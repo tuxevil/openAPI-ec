@@ -9,9 +9,7 @@ use Illuminate\Support\Facades\Http;
 
 class ContificoClient
 {
-    public function __construct(protected ProviderCredentials $credentials)
-    {
-    }
+    public function __construct(protected ProviderCredentials $credentials) {}
 
     public function get(string $path, array $query = []): array
     {

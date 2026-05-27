@@ -3,15 +3,14 @@
 namespace App\Providers\Accounting\Contifico;
 
 use App\Contracts\AccountingProvider;
+use App\Exceptions\ProviderException;
 use App\Providers\Accounting\Support\ContificoInvoicePayload;
 use App\Providers\Accounting\Support\ContificoNormalizer;
 use App\Support\OperationResult;
 
 class ContificoProvider implements AccountingProvider
 {
-    public function __construct(protected ContificoClient $client)
-    {
-    }
+    public function __construct(protected ContificoClient $client) {}
 
     public function listContacts(array $filters): OperationResult
     {
@@ -152,7 +151,7 @@ class ContificoProvider implements AccountingProvider
         $query = $this->client->posQuery();
 
         if ($query === []) {
-            throw new \App\Exceptions\ProviderException(
+            throw new ProviderException(
                 message: 'Contifico posToken is required for this operation.',
                 httpStatus: 422,
                 apiCode: 'provider_credentials_invalid',

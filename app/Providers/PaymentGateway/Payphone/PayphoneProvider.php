@@ -7,9 +7,7 @@ use App\Support\OperationResult;
 
 class PayphoneProvider implements PaymentGatewayProvider
 {
-    public function __construct(protected PayphoneClient $client)
-    {
-    }
+    public function __construct(protected PayphoneClient $client) {}
 
     public function createSale(array $data): OperationResult
     {

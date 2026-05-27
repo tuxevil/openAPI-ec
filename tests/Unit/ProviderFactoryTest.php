@@ -12,7 +12,7 @@ class ProviderFactoryTest extends TestCase
 {
     public function test_it_resolves_contifico_provider(): void
     {
-        $provider = (new ProviderFactory())->make('contifico', new ProviderCredentials('api-key', 'pos-token'));
+        $provider = (new ProviderFactory)->make('contifico', new ProviderCredentials('api-key', 'pos-token'));
 
         $this->assertInstanceOf(ContificoProvider::class, $provider);
     }
@@ -21,6 +21,6 @@ class ProviderFactoryTest extends TestCase
     {
         $this->expectException(UnsupportedProviderException::class);
 
-        (new ProviderFactory())->make('unknown', new ProviderCredentials('api-key'));
+        (new ProviderFactory)->make('unknown', new ProviderCredentials('api-key'));
     }
 }

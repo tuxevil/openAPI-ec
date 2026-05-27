@@ -9,9 +9,7 @@ use Illuminate\Support\Facades\Http;
 
 class PayphoneClient
 {
-    public function __construct(protected GatewayCredentials $credentials)
-    {
-    }
+    public function __construct(protected GatewayCredentials $credentials) {}
 
     public function get(string $path): array
     {

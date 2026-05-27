@@ -11,6 +11,5 @@ class OperationResult
         public readonly string $status,
         public readonly array $data,
         public readonly array $providerResponse,
-    ) {
-    }
+    ) {}
 }

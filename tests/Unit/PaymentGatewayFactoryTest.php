@@ -12,7 +12,7 @@ class PaymentGatewayFactoryTest extends TestCase
 {
     public function test_it_resolves_payphone_provider(): void
     {
-        $provider = (new PaymentGatewayFactory())->make('payphone', new GatewayCredentials('gateway-token'));
+        $provider = (new PaymentGatewayFactory)->make('payphone', new GatewayCredentials('gateway-token'));
 
         $this->assertInstanceOf(PayphoneProvider::class, $provider);
     }
@@ -21,6 +21,6 @@ class PaymentGatewayFactoryTest extends TestCase
     {
         $this->expectException(UnsupportedProviderException::class);
 
-        (new PaymentGatewayFactory())->make('unknown', new GatewayCredentials('gateway-token'));
+        (new PaymentGatewayFactory)->make('unknown', new GatewayCredentials('gateway-token'));
     }
 }

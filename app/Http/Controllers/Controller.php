@@ -6,8 +6,8 @@ use App\Contracts\AccountingProvider;
 use App\Contracts\PaymentGatewayProvider;
 use App\Providers\Accounting\ProviderFactory;
 use App\Providers\PaymentGateway\PaymentGatewayFactory;
-use App\ValueObjects\ProviderCredentials;
 use App\ValueObjects\GatewayCredentials;
+use App\ValueObjects\ProviderCredentials;
 
 abstract class Controller
 {

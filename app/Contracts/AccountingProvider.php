@@ -2,6 +2,4 @@
 
 namespace App\Contracts;
 
-interface AccountingProvider extends ContactsProvider, ProductsProvider, InvoicesProvider, PaymentsProvider
-{
-}
+interface AccountingProvider extends ContactsProvider, InvoicesProvider, PaymentsProvider, ProductsProvider {}

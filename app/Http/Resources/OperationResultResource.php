@@ -2,10 +2,11 @@
 
 namespace App\Http\Resources;
 
+use App\Support\OperationResult;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** @mixin \App\Support\OperationResult */
+/** @mixin OperationResult */
 class OperationResultResource extends JsonResource
 {
     public function toArray(Request $request): array
