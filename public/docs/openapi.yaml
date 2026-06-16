@@ -5,6 +5,13 @@ info:
   description: API normalizada para integraciones internas con Contifico y Payphone.
 servers:
   - url: http://localhost:8081/api
+tags:
+  - name: Accounting
+    description: Operaciones contables contra Contifico.
+  - name: PaymentGateways
+    description: Operaciones de pago contra Payphone.
+  - name: Docs
+    description: Documentacion OpenAPI y Swagger UI.
 components:
   securitySchemes:
     InternalBearer:
@@ -43,7 +50,83 @@ components:
       required: true
       schema:
         type: string
+  responses:
+    Unauthorized:
+      description: Bearer token interno invalido o ausente.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    UnprocessableEntity:
+      description: Request valido pero el proveedor rechazo los datos.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ValidationError:
+      description: Errores de validacion del request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+    BadGateway:
+      description: El proveedor upstream devolvio 5xx.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    GatewayTimeout:
+      description: Timeout al comunicarse con el proveedor.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    InternalError:
+      description: Error interno del servicio.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
   schemas:
+    ApiError:
+      type: object
+      required: [code, message, details, provider]
+      properties:
+        code:
+          type: string
+          description: Codigo de error legible por maquina.
+          enum:
+            - invalid_internal_token
+            - provider_not_supported
+            - provider_credentials_invalid
+            - provider_request_error
+            - provider_upstream_error
+            - provider_timeout
+            - internal_error
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+        provider:
+          type: [string, 'null']
+    ValidationError:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+    Identification:
+      type: object
+      required: [type, value]
+      properties:
+        type: { type: string, enum: [CEDULA, RUC, PASAPORTE, CONSUMIDOR_FINAL] }
+        value: { type: string }
     OperationResult:
       type: object
       properties:
@@ -64,31 +147,55 @@ components:
       required: [bearerToken]
       properties:
         bearerToken: { type: string }
+    ContactData:
+      type: object
+      required: [name, identification, isCustomer, isSupplier, status]
+      properties:
+        name: { type: string, maxLength: 300 }
+        commercialName: { type: [string, 'null'], maxLength: 300 }
+        identification:
+          $ref: '#/components/schemas/Identification'
+        email: { type: [string, 'null'], format: email }
+        phone: { type: [string, 'null'], maxLength: 50 }
+        address: { type: [string, 'null'], maxLength: 300 }
+        isCustomer: { type: boolean }
+        isSupplier: { type: boolean }
+        status: { type: string, enum: [A, I] }
     ContactWrite:
       type: object
       required: [provider, credentials, data]
       properties:
         provider: { type: string, enum: [contifico] }
         credentials:
-          $ref: '#/components/schemas/ProviderCredentials'
+          allOf:
+            - $ref: '#/components/schemas/ProviderCredentials'
         data:
-          type: object
-          required: [name, identification]
-          properties:
-            name: { type: string }
-            commercialName: { type: [string, 'null'] }
-            identification:
-              type: object
-              required: [type, value]
-              properties:
-                type: { type: string, enum: [CEDULA, RUC, PASAPORTE, CONSUMIDOR_FINAL] }
-                value: { type: string }
-            email: { type: [string, 'null'] }
-            phone: { type: [string, 'null'] }
-            address: { type: [string, 'null'] }
-            isCustomer: { type: boolean }
-            isSupplier: { type: boolean }
-            status: { type: string, enum: [A, I] }
+          $ref: '#/components/schemas/ContactData'
+    ContactNormalized:
+      type: object
+      properties:
+        externalId: { type: string }
+        name: { type: string }
+        commercialName: { type: [string, 'null'] }
+        identification:
+          $ref: '#/components/schemas/Identification'
+        email: { type: [string, 'null'] }
+        phone: { type: [string, 'null'] }
+        address: { type: [string, 'null'] }
+        isCustomer: { type: boolean }
+        isSupplier: { type: boolean }
+        status: { type: string, enum: [A, I] }
+    ProductData:
+      type: object
+      required: [code, name, type, price, taxRate, status]
+      properties:
+        code: { type: string, maxLength: 200 }
+        name: { type: string, maxLength: 300 }
+        type: { type: string, enum: [PRO, SER] }
+        price: { type: number, minimum: 0 }
+        taxRate: { type: number, minimum: 0 }
+        stock: { type: [number, 'null'], minimum: 0 }
+        status: { type: string, enum: [A, I] }
     ProductWrite:
       type: object
       required: [provider, credentials, data]
@@ -97,16 +204,54 @@ components:
         credentials:
           $ref: '#/components/schemas/ProviderCredentials'
         data:
-          type: object
-          required: [code, name, type, price]
-          properties:
-            code: { type: string }
-            name: { type: string }
-            type: { type: string, enum: [PRO, SER] }
-            price: { type: number }
-            taxRate: { type: number }
-            stock: { type: number }
-            status: { type: string, enum: [A, I] }
+          $ref: '#/components/schemas/ProductData'
+    ProductNormalized:
+      type: object
+      properties:
+        externalId: { type: string }
+        code: { type: [string, 'null'] }
+        name: { type: string }
+        type: { type: string }
+        price: { type: number }
+        taxRate: { type: number }
+        stock: { type: [number, 'null'] }
+        status: { type: string }
+    InvoiceItem:
+      type: object
+      required: [productExternalId, quantity, unitPrice, taxRate, discountPercentage]
+      properties:
+        productExternalId: { type: string }
+        quantity: { type: number, exclusiveMinimum: 0 }
+        unitPrice: { type: number, minimum: 0 }
+        taxRate: { type: number, minimum: 0 }
+        discountPercentage: { type: number, minimum: 0 }
+    InvoiceCustomer:
+      type: object
+      required: [name, identification]
+      properties:
+        name: { type: string, maxLength: 300 }
+        email: { type: [string, 'null'], format: email }
+        phone: { type: [string, 'null'] }
+        address: { type: [string, 'null'] }
+        identification:
+          $ref: '#/components/schemas/Identification'
+    InvoiceData:
+      type: object
+      required: [number, issuedAt, customer, items]
+      properties:
+        number: { type: string, maxLength: 17 }
+        issuedAt: { type: string, format: date }
+        authorization: { type: [string, 'null'], maxLength: 49 }
+        description: { type: [string, 'null'] }
+        reference: { type: [string, 'null'], maxLength: 300 }
+        status: { type: [string, 'null'] }
+        customer:
+          $ref: '#/components/schemas/InvoiceCustomer'
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/InvoiceItem'
     InvoiceWrite:
       type: object
       required: [provider, credentials, data]
@@ -115,40 +260,43 @@ components:
         credentials:
           $ref: '#/components/schemas/ProviderCredentials'
         data:
+          $ref: '#/components/schemas/InvoiceData'
+    InvoiceNormalized:
+      type: object
+      properties:
+        externalId: { type: string }
+        number: { type: [string, 'null'] }
+        issuedAt: { type: [string, 'null'], format: date }
+        customer:
           type: object
-          required: [number, issuedAt, customer, items]
           properties:
-            number: { type: string }
-            issuedAt: { type: string, format: date }
-            authorization: { type: [string, 'null'] }
-            description: { type: [string, 'null'] }
-            reference: { type: [string, 'null'] }
-            status: { type: string }
-            customer:
-              type: object
-              required: [name, identification]
-              properties:
-                name: { type: string }
-                email: { type: [string, 'null'] }
-                phone: { type: [string, 'null'] }
-                address: { type: [string, 'null'] }
-                identification:
-                  type: object
-                  required: [type, value]
-                  properties:
-                    type: { type: string, enum: [CEDULA, RUC, PASAPORTE, CONSUMIDOR_FINAL] }
-                    value: { type: string }
-            items:
-              type: array
-              items:
-                type: object
-                required: [productExternalId, quantity, unitPrice]
-                properties:
-                  productExternalId: { type: string }
-                  quantity: { type: number }
-                  unitPrice: { type: number }
-                  taxRate: { type: number }
-                  discountPercentage: { type: number }
+            name: { type: [string, 'null'] }
+            identification:
+              $ref: '#/components/schemas/Identification'
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/InvoiceItem' }
+        subtotal: { type: number }
+        taxTotal: { type: number }
+        total: { type: number }
+        status: { type: [string, 'null'] }
+        authorization: { type: [string, 'null'] }
+    InvoiceStatusNormalized:
+      type: object
+      properties:
+        externalId: { type: string }
+        status: { type: [string, 'null'] }
+    PaymentData:
+      type: object
+      required: [method, amount]
+      properties:
+        method: { type: string, enum: [EF, CQ, TC, TRA] }
+        amount: { type: number, exclusiveMinimum: 0 }
+        paidAt: { type: [string, 'null'], format: date }
+        reference: { type: [string, 'null'], maxLength: 15 }
+        bankAccountId: { type: [string, 'null'], maxLength: 16 }
+        checkNumber: { type: [string, 'null'], maxLength: 15 }
+        cardProcessor: { type: [string, 'null'], enum: [D, M, E, P, A] }
     PaymentWrite:
       type: object
       required: [provider, credentials, data]
@@ -157,16 +305,35 @@ components:
         credentials:
           $ref: '#/components/schemas/ProviderCredentials'
         data:
-          type: object
-          required: [method, amount]
-          properties:
-            method: { type: string, enum: [EF, CQ, TC, TRA] }
-            amount: { type: number }
-            paidAt: { type: [string, 'null'], format: date }
-            reference: { type: [string, 'null'] }
-            bankAccountId: { type: [string, 'null'] }
-            checkNumber: { type: [string, 'null'] }
-            cardProcessor: { type: [string, 'null'], enum: [D, M, E, P, A] }
+          $ref: '#/components/schemas/PaymentData'
+    PaymentNormalized:
+      type: object
+      properties:
+        externalId: { type: string }
+        invoiceExternalId: { type: string }
+        method: { type: [string, 'null'] }
+        amount: { type: number }
+        paidAt: { type: [string, 'null'], format: date }
+        reference: { type: [string, 'null'] }
+        bankAccountId: { type: [string, 'null'] }
+    PayphoneSaleData:
+      type: object
+      required: [phoneNumber, countryCode, reference, clientTransactionId, amount, amountWithTax, amountWithoutTax, tax]
+      properties:
+        phoneNumber: { type: string, maxLength: 20 }
+        countryCode: { type: string, maxLength: 5 }
+        clientUserId: { type: [string, 'null'], maxLength: 255 }
+        documentId: { type: [string, 'null'], maxLength: 20 }
+        email: { type: [string, 'null'], format: email }
+        reference: { type: string, maxLength: 255 }
+        responseUrl: { type: [string, 'null'], format: uri }
+        amount: { type: integer, minimum: 0 }
+        amountWithTax: { type: integer, minimum: 0 }
+        amountWithoutTax: { type: integer, minimum: 0 }
+        tax: { type: integer, minimum: 0 }
+        clientTransactionId: { type: string, maxLength: 255 }
+        storeId: { type: [string, 'null'], format: uuid }
+        terminalId: { type: [string, 'null'], maxLength: 255 }
     PayphoneSaleWrite:
       type: object
       required: [provider, credentials, data]
@@ -175,23 +342,23 @@ components:
         credentials:
           $ref: '#/components/schemas/GatewayCredentials'
         data:
-          type: object
-          required: [phoneNumber, countryCode, reference, clientTransactionId, amount, amountWithTax, amountWithoutTax, tax]
-          properties:
-            phoneNumber: { type: string }
-            countryCode: { type: string }
-            clientUserId: { type: [string, 'null'] }
-            documentId: { type: [string, 'null'] }
-            email: { type: [string, 'null'], format: email }
-            reference: { type: string }
-            responseUrl: { type: [string, 'null'], format: uri }
-            amount: { type: integer }
-            amountWithTax: { type: integer }
-            amountWithoutTax: { type: integer }
-            tax: { type: integer }
-            clientTransactionId: { type: string }
-            storeId: { type: [string, 'null'], format: uuid }
-            terminalId: { type: [string, 'null'] }
+          $ref: '#/components/schemas/PayphoneSaleData'
+    PayphoneLinkData:
+      type: object
+      required: [reference, clientTransactionId, amount, amountWithTax, amountWithoutTax, tax]
+      properties:
+        reference: { type: string, maxLength: 255 }
+        clientTransactionId: { type: string, maxLength: 255 }
+        amount: { type: integer, minimum: 0 }
+        amountWithTax: { type: integer, minimum: 0 }
+        amountWithoutTax: { type: integer, minimum: 0 }
+        tax: { type: integer, minimum: 0 }
+        expireIn: { type: [integer, 'null'], minimum: 1 }
+        notifyUrl: { type: [string, 'null'], format: uri }
+        storeId: { type: [string, 'null'], format: uuid }
+        terminalId: { type: [string, 'null'], maxLength: 255 }
+        documentId: { type: [string, 'null'], maxLength: 20 }
+        email: { type: [string, 'null'], format: email }
     PayphoneLinkWrite:
       type: object
       required: [provider, credentials, data]
@@ -200,21 +367,13 @@ components:
         credentials:
           $ref: '#/components/schemas/GatewayCredentials'
         data:
-          type: object
-          required: [reference, clientTransactionId, amount, amountWithTax, amountWithoutTax, tax]
-          properties:
-            reference: { type: string }
-            clientTransactionId: { type: string }
-            amount: { type: integer }
-            amountWithTax: { type: integer }
-            amountWithoutTax: { type: integer }
-            tax: { type: integer }
-            expireIn: { type: [integer, 'null'] }
-            notifyUrl: { type: [string, 'null'], format: uri }
-            storeId: { type: [string, 'null'], format: uuid }
-            terminalId: { type: [string, 'null'] }
-            documentId: { type: [string, 'null'] }
-            email: { type: [string, 'null'], format: email }
+          $ref: '#/components/schemas/PayphoneLinkData'
+    PayphoneReverseData:
+      type: object
+      required: [transactionId, clientTransactionId]
+      properties:
+        transactionId: { type: integer, minimum: 1 }
+        clientTransactionId: { type: string, maxLength: 255 }
     PayphoneReverseWrite:
       type: object
       required: [provider, credentials, data]
@@ -223,35 +382,72 @@ components:
         credentials:
           $ref: '#/components/schemas/GatewayCredentials'
         data:
-          type: object
-          required: [transactionId, clientTransactionId]
-          properties:
-            transactionId: { type: integer }
-            clientTransactionId: { type: string }
-security:
-  - InternalBearer: []
+          $ref: '#/components/schemas/PayphoneReverseData'
 paths:
   /v1/contacts:
     get:
+      tags: [Accounting]
       parameters:
         - $ref: '#/components/parameters/Provider'
         - $ref: '#/components/parameters/ProviderApiKey'
         - $ref: '#/components/parameters/ProviderPosToken'
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string, enum: [A, I] }
+        - name: type
+          in: query
+          schema: { type: string, enum: [N, J, I, P] }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1 }
       responses:
         '200':
-          description: Contact list
+          description: Lista de contactos normalizados.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/OperationResult'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items: { $ref: '#/components/schemas/ContactNormalized' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
     post:
+      tags: [Accounting]
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/ContactWrite'
+            schema: { $ref: '#/components/schemas/ContactWrite' }
       responses:
         '200':
-          description: Contact created
+          description: Contacto creado.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/OperationResult'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/ContactNormalized' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
   /v1/contacts/{id}:
     get:
+      tags: [Accounting]
       parameters:
         - name: id
           in: path
@@ -260,8 +456,22 @@ paths:
         - $ref: '#/components/parameters/Provider'
         - $ref: '#/components/parameters/ProviderApiKey'
       responses:
-        '200': { description: Contact detail }
+        '200':
+          description: Detalle del contacto.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/OperationResult'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/ContactNormalized' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
     put:
+      tags: [Accounting]
       parameters:
         - name: id
           in: path
@@ -271,28 +481,82 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/ContactWrite'
+            schema: { $ref: '#/components/schemas/ContactWrite' }
       responses:
-        '200': { description: Contact updated }
+        '200':
+          description: Contacto actualizado.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/OperationResult'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/ContactNormalized' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
   /v1/products:
     get:
+      tags: [Accounting]
       parameters:
         - $ref: '#/components/parameters/Provider'
         - $ref: '#/components/parameters/ProviderApiKey'
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string, enum: [A, I] }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1 }
       responses:
-        '200': { description: Product list }
+        '200':
+          description: Lista de productos normalizados.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/OperationResult'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items: { $ref: '#/components/schemas/ProductNormalized' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
     post:
+      tags: [Accounting]
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/ProductWrite'
+            schema: { $ref: '#/components/schemas/ProductWrite' }
       responses:
-        '200': { description: Product created }
+        '200':
+          description: Producto creado.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/OperationResult'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/ProductNormalized' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
   /v1/products/{id}:
     get:
+      tags: [Accounting]
       parameters:
         - name: id
           in: path
@@ -301,8 +565,22 @@ paths:
         - $ref: '#/components/parameters/Provider'
         - $ref: '#/components/parameters/ProviderApiKey'
       responses:
-        '200': { description: Product detail }
+        '200':
+          description: Detalle del producto.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/OperationResult'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/ProductNormalized' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
     put:
+      tags: [Accounting]
       parameters:
         - name: id
           in: path
@@ -312,12 +590,25 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/ProductWrite'
+            schema: { $ref: '#/components/schemas/ProductWrite' }
       responses:
-        '200': { description: Product updated }
+        '200':
+          description: Producto actualizado.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/OperationResult'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/ProductNormalized' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
   /v1/products/{id}/stock:
     get:
+      tags: [Accounting]
       parameters:
         - name: id
           in: path
@@ -326,25 +617,93 @@ paths:
         - $ref: '#/components/parameters/Provider'
         - $ref: '#/components/parameters/ProviderApiKey'
       responses:
-        '200': { description: Product stock }
+        '200':
+          description: Stock por bodega.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/OperationResult'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                warehouseId: { type: [string, 'null'] }
+                                warehouseName: { type: [string, 'null'] }
+                                quantity: { type: number }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
   /v1/invoices:
     get:
+      tags: [Accounting]
       parameters:
         - $ref: '#/components/parameters/Provider'
         - $ref: '#/components/parameters/ProviderApiKey'
+        - name: customerIdentification
+          in: query
+          schema: { type: string }
+        - name: issuedFrom
+          in: query
+          schema: { type: string, format: date }
+        - name: issuedTo
+          in: query
+          schema: { type: string, format: date }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1 }
       responses:
-        '200': { description: Invoice list }
+        '200':
+          description: Lista de facturas normalizadas.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/OperationResult'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items: { $ref: '#/components/schemas/InvoiceNormalized' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
     post:
+      tags: [Accounting]
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/InvoiceWrite'
+            schema: { $ref: '#/components/schemas/InvoiceWrite' }
       responses:
-        '200': { description: Invoice created }
+        '200':
+          description: Factura creada.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/OperationResult'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/InvoiceNormalized' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
   /v1/invoices/{id}:
     get:
+      tags: [Accounting]
       parameters:
         - name: id
           in: path
@@ -353,9 +712,23 @@ paths:
         - $ref: '#/components/parameters/Provider'
         - $ref: '#/components/parameters/ProviderApiKey'
       responses:
-        '200': { description: Invoice detail }
+        '200':
+          description: Detalle de la factura.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/OperationResult'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/InvoiceNormalized' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
   /v1/invoices/{id}/status:
     get:
+      tags: [Accounting]
       parameters:
         - name: id
           in: path
@@ -364,9 +737,23 @@ paths:
         - $ref: '#/components/parameters/Provider'
         - $ref: '#/components/parameters/ProviderApiKey'
       responses:
-        '200': { description: Invoice status }
+        '200':
+          description: Estado actual de la factura.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/OperationResult'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/InvoiceStatusNormalized' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
   /v1/invoices/{invoiceId}/payments:
     get:
+      tags: [Accounting]
       parameters:
         - name: invoiceId
           in: path
@@ -375,8 +762,27 @@ paths:
         - $ref: '#/components/parameters/Provider'
         - $ref: '#/components/parameters/ProviderApiKey'
       responses:
-        '200': { description: Invoice payments }
+        '200':
+          description: Pagos contables de la factura.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/OperationResult'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items: { $ref: '#/components/schemas/PaymentNormalized' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
     post:
+      tags: [Accounting]
       parameters:
         - name: invoiceId
           in: path
@@ -386,20 +792,32 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/PaymentWrite'
+            schema: { $ref: '#/components/schemas/PaymentWrite' }
       responses:
-        '200': { description: Payment created }
+        '200':
+          description: Pago creado.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/OperationResult'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/PaymentNormalized' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
   /v1/payment-gateways/sales:
     post:
+      tags: [PaymentGateways]
       summary: Crear cobro directo Payphone
       description: Crea un cobro directo hacia la app Payphone del cliente. Los montos se envian en centavos enteros.
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/PayphoneSaleWrite'
+            schema: { $ref: '#/components/schemas/PayphoneSaleWrite' }
             examples:
               nexosSale:
                 summary: Cobro directo desde nexOS
@@ -419,9 +837,10 @@ paths:
                     responseUrl: "https://nexos.example.com/webhooks/payphone"
       responses:
         '200':
-          description: Payphone sale created
+          description: Cobro creado (estado pending).
           content:
             application/json:
+              schema: { $ref: '#/components/schemas/OperationResult' }
               examples:
                 pendingSale:
                   value:
@@ -441,16 +860,20 @@ paths:
                       countryCode: "593"
                     providerResponse:
                       transactionId: 123456789
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
   /v1/payment-gateways/links:
     post:
+      tags: [PaymentGateways]
       summary: Crear link de pago Payphone
       description: Genera una URL de cobro compartible. Los montos se envian en centavos enteros.
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/PayphoneLinkWrite'
+            schema: { $ref: '#/components/schemas/PayphoneLinkWrite' }
             examples:
               ampLink:
                 summary: Link de pago desde AMP
@@ -468,9 +891,10 @@ paths:
                     notifyUrl: "https://amp.example.com/webhooks/payphone"
       responses:
         '200':
-          description: Payphone payment link created
+          description: Link creado (estado pending).
           content:
             application/json:
+              schema: { $ref: '#/components/schemas/OperationResult' }
               examples:
                 pendingLink:
                   value:
@@ -489,8 +913,13 @@ paths:
                       notifyUrl: "https://amp.example.com/webhooks/payphone"
                     providerResponse:
                       url: "https://payp.hn/x/ejemplo123"
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
   /v1/payment-gateways/transactions/{transactionId}:
     get:
+      tags: [PaymentGateways]
       summary: Consultar transaccion Payphone
       description: Devuelve el estado actual del cobro y normaliza Approved, Pending, Canceled y Rejected.
       parameters:
@@ -502,9 +931,10 @@ paths:
         - $ref: '#/components/parameters/GatewayBearer'
       responses:
         '200':
-          description: Payphone transaction status
+          description: Estado de la transaccion.
           content:
             application/json:
+              schema: { $ref: '#/components/schemas/OperationResult' }
               examples:
                 approvedTransaction:
                   value:
@@ -527,16 +957,20 @@ paths:
                       transactionStatus: Approved
                       amount: 11500
                       currency: USD
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
   /v1/payment-gateways/reversals:
     post:
+      tags: [PaymentGateways]
       summary: Reversar transaccion Payphone
       description: Solicita el reverso total de una transaccion previamente procesada.
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/PayphoneReverseWrite'
+            schema: { $ref: '#/components/schemas/PayphoneReverseWrite' }
             examples:
               nanoReverse:
                 summary: Reverso desde nano
@@ -549,9 +983,10 @@ paths:
                     clientTransactionId: "NANO-ORDER-12345"
       responses:
         '200':
-          description: Payphone reversal created
+          description: Reverso procesado.
           content:
             application/json:
+              schema: { $ref: '#/components/schemas/OperationResult' }
               examples:
                 successfulReverse:
                   value:
@@ -567,3 +1002,27 @@ paths:
                     providerResponse:
                       status: Success
                       message: "Transaccion reversada exitosamente"
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '502': { $ref: '#/components/responses/BadGateway' }
+        '504': { $ref: '#/components/responses/GatewayTimeout' }
+  /docs/openapi.yaml:
+    get:
+      tags: [Docs]
+      security: []
+      responses:
+        '200':
+          description: Spec OpenAPI en formato YAML.
+          content:
+            application/yaml:
+              schema: { type: string }
+  /docs:
+    get:
+      tags: [Docs]
+      security: []
+      responses:
+        '200':
+          description: UI Swagger.
+          content:
+            text/html:
+              schema: { type: string }

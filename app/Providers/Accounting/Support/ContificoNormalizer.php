@@ -179,11 +179,30 @@ class ContificoNormalizer
             return 'RUC';
         }
 
-        if (! empty($data['es_extranjero'])) {
+        if (self::isForeign($data)) {
             return 'PASAPORTE';
         }
 
         return 'CEDULA';
+    }
+
+    protected static function isForeign(array $data): bool
+    {
+        $flag = $data['es_extranjero'] ?? null;
+
+        if (is_bool($flag)) {
+            return $flag;
+        }
+
+        if (is_string($flag)) {
+            return in_array(strtoupper(trim($flag)), ['S', 'SI', 'TRUE', '1', 'YES'], true);
+        }
+
+        if (is_int($flag) || is_float($flag)) {
+            return $flag === 1;
+        }
+
+        return false;
     }
 
     protected static function normalizeDate(?string $value): ?string

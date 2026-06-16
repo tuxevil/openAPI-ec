@@ -31,7 +31,7 @@ class ContificoProvider implements AccountingProvider
     {
         $response = $this->client->get("/api/v2/persona/{$id}/");
 
-        return new OperationResult('contifico', 'contacts.get', (string) ($response['id'] ?? $id), 'success', ContificoNormalizer::contact($response), $response);
+        return new OperationResult('contifico', 'contacts.get', $this->resolveExternalId($response, $id), 'success', ContificoNormalizer::contact($response), $response);
     }
 
     public function createContact(array $data): OperationResult
@@ -39,7 +39,7 @@ class ContificoProvider implements AccountingProvider
         $payload = ContificoNormalizer::contactPayload($data);
         $response = $this->client->post('/api/v2/persona/', $payload, $this->requiredPosQuery());
 
-        return new OperationResult('contifico', 'contacts.create', (string) ($response['id'] ?? $response['id_integracion'] ?? null), 'success', ContificoNormalizer::contact($response), $response);
+        return new OperationResult('contifico', 'contacts.create', $this->resolveExternalId($response), 'success', ContificoNormalizer::contact($response), $response);
     }
 
     public function updateContact(string $id, array $data): OperationResult
@@ -47,7 +47,7 @@ class ContificoProvider implements AccountingProvider
         $payload = ContificoNormalizer::contactPayload($data);
         $response = $this->client->put("/api/v2/persona/{$id}/", $payload, $this->requiredPosQuery());
 
-        return new OperationResult('contifico', 'contacts.update', (string) ($response['id'] ?? $id), 'success', ContificoNormalizer::contact($response), $response);
+        return new OperationResult('contifico', 'contacts.update', $this->resolveExternalId($response, $id), 'success', ContificoNormalizer::contact($response), $response);
     }
 
     public function listProducts(array $filters): OperationResult
@@ -67,21 +67,21 @@ class ContificoProvider implements AccountingProvider
     {
         $response = $this->client->get("/api/v2/producto/{$id}");
 
-        return new OperationResult('contifico', 'products.get', (string) ($response['id'] ?? $id), 'success', ContificoNormalizer::product($response), $response);
+        return new OperationResult('contifico', 'products.get', $this->resolveExternalId($response, $id), 'success', ContificoNormalizer::product($response), $response);
     }
 
     public function createProduct(array $data): OperationResult
     {
         $response = $this->client->post('/api/v2/producto/', ContificoNormalizer::productPayload($data));
 
-        return new OperationResult('contifico', 'products.create', (string) ($response['id'] ?? $response['id_integracion'] ?? null), 'success', ContificoNormalizer::product($response), $response);
+        return new OperationResult('contifico', 'products.create', $this->resolveExternalId($response), 'success', ContificoNormalizer::product($response), $response);
     }
 
     public function updateProduct(string $id, array $data): OperationResult
     {
         $response = $this->client->put("/api/v2/producto/{$id}", ContificoNormalizer::productPayload($data));
 
-        return new OperationResult('contifico', 'products.update', (string) ($response['id'] ?? $id), 'success', ContificoNormalizer::product($response), $response);
+        return new OperationResult('contifico', 'products.update', $this->resolveExternalId($response, $id), 'success', ContificoNormalizer::product($response), $response);
     }
 
     public function getProductStock(string $id): OperationResult
@@ -113,14 +113,14 @@ class ContificoProvider implements AccountingProvider
     {
         $response = $this->client->get("/api/v2/documento/{$id}");
 
-        return new OperationResult('contifico', 'invoices.get', (string) ($response['id'] ?? $id), 'success', ContificoNormalizer::invoice($response), $response);
+        return new OperationResult('contifico', 'invoices.get', $this->resolveExternalId($response, $id), 'success', ContificoNormalizer::invoice($response), $response);
     }
 
     public function createInvoice(array $data): OperationResult
     {
         $response = $this->client->post('/api/v2/documento/', ContificoInvoicePayload::fromNormalized($data, $this->client->posQuery()['pos'] ?? null));
 
-        return new OperationResult('contifico', 'invoices.create', (string) ($response['id'] ?? $response['id_integracion'] ?? null), 'success', ContificoNormalizer::invoice($response), $response);
+        return new OperationResult('contifico', 'invoices.create', $this->resolveExternalId($response), 'success', ContificoNormalizer::invoice($response), $response);
     }
 
     public function getInvoiceStatus(string $id): OperationResult
@@ -143,7 +143,18 @@ class ContificoProvider implements AccountingProvider
     {
         $response = $this->client->post("/api/v2/documento/{$invoiceId}/cobro/", ContificoNormalizer::paymentPayload($data));
 
-        return new OperationResult('contifico', 'payments.create', (string) ($response['id'] ?? $invoiceId), 'success', ContificoNormalizer::payment($response, $invoiceId), $response);
+        return new OperationResult('contifico', 'payments.create', $this->resolveExternalId($response, $invoiceId), 'success', ContificoNormalizer::payment($response, $invoiceId), $response);
+    }
+
+    protected function resolveExternalId(array $response, ?string $fallback = null): ?string
+    {
+        $candidate = $response['id'] ?? $response['id_integracion'] ?? null;
+
+        if ($candidate === null || $candidate === '') {
+            return $fallback;
+        }
+
+        return (string) $candidate;
     }
 
     protected function requiredPosQuery(): array

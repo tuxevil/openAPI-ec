@@ -8,7 +8,7 @@ use App\Http\Controllers\Api\V1\PaymentGatewayController;
 use App\Http\Controllers\Api\V1\ProductController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('internal.auth')->prefix('v1')->group(function (): void {
+Route::middleware(['internal.auth', 'throttle:api'])->prefix('v1')->group(function (): void {
     Route::get('/contacts', [ContactController::class, 'index']);
     Route::get('/contacts/{id}', [ContactController::class, 'show']);
     Route::post('/contacts', [ContactController::class, 'store']);
