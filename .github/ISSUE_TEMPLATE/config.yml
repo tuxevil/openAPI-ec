@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Reporte de seguridad
+    url: https://github.com/tuxevil/openAPI-ec/security/advisories/new
+    about: Reporta vulnerabilidades de forma privada. No abras una issue publica.
+  - name: Documentacion de la API
+    url: https://github.com/tuxevil/openAPI-ec/blob/main/public/docs/openapi.yaml
+    about: Especificacion OpenAPI 3.1 con la forma de cada request y response.
