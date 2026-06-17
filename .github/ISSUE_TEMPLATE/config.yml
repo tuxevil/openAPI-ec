@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Preguntas y discusiones
+    url: https://github.com/tuxevil/openAPI-ec/discussions
+    about: Para preguntas de uso, ideas y conversaciones generales de la comunidad.
   - name: Reporte de seguridad
     url: https://github.com/tuxevil/openAPI-ec/security/advisories/new
     about: Reporta vulnerabilidades de forma privada. No abras una issue publica.

@@ -492,19 +492,15 @@ docker build -t openapi-ec:latest .
 
 ## Contribuir
 
-1. Haz fork del repositorio.
-2. Crea una rama desde `main`: `git checkout -b feat/mi-cambio`.
-3. Asegúrate de que `pint` y `php artisan test` pasen localmente.
-4. Añade tests para cualquier cambio de comportamiento.
-5. Actualiza `public/docs/openapi.yaml` si tocas el contrato HTTP.
-6. Abre un Pull Request describiendo motivación, cambios y pruebas realizadas.
+1. Lee la [guía de contribución](CONTRIBUTING.md) y el [código de conducta](CODE_OF_CONDUCT.md).
+2. Haz fork del repositorio.
+3. Crea una rama desde `main`: `git checkout -b feat/mi-cambio`.
+4. Asegúrate de que `pint` y `php artisan test` pasen localmente.
+5. Añade tests para cualquier cambio de comportamiento.
+6. Actualiza `public/docs/openapi.yaml` si tocas el contrato HTTP.
+7. Abre un Pull Request usando la plantilla provista.
 
-Convenciones:
-
-- PHP 8.4 idiom (tipos estrictos, `readonly`, enums cuando aplique).
-- PSR-12 enforced por Pint.
-- Mensajes de commit en español, formato imperativo (`feat: …`, `fix: …`, `docs: …`).
-- Sin nuevos `use` innecesarios; sin comentarios redundantes.
+¿Dudas, ideas o quieres discutir el diseño? Usa las [Discussions](https://github.com/tuxevil/openAPI-ec/discussions) en lugar de abrir un issue.
 
 ---
 
