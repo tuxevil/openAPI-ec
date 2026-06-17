@@ -1,0 +1,7 @@
+# CODEOWNERS
+# Cada línea es una regla: ruta patron @usuario o @org.
+# El último patrón que coincide gana.
+# Más info: https://docs.github.com/es/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Owner por defecto: el autor del repo revisa todo.
+/                   @tuxevil
