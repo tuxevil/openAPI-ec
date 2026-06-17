@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 class ProviderErrorMappingTest extends TestCase
@@ -61,8 +63,23 @@ class ProviderErrorMappingTest extends TestCase
 
     public function test_api_returns_json_even_when_log_file_is_not_writable(): void
     {
-        $logFile = storage_path('logs/laravel.log');
-        @chmod($logFile, 0444);
+        // Usamos un archivo en sys_get_temp_dir que el runner del test
+        // siempre es dueno y puede chmodear, en lugar de storage/logs/laravel.log
+        // que puede pertenecer a otro usuario (ej. www-data en Docker local).
+        $logFile = tempnam(sys_get_temp_dir(), 'openapi-ec-unwritable-');
+        file_put_contents($logFile, '');
+
+        // Reconfiguramos el canal de log a este archivo y forzamos
+        // re-resolucion del LogManager para que tome la nueva ruta.
+        config([
+            'logging.default' => 'single',
+            'logging.channels.single.path' => $logFile,
+        ]);
+        $this->app->forgetInstance(LogManager::class);
+        Log::clearResolvedInstances();
+
+        // Ahora hacemos el archivo no escribible.
+        chmod($logFile, 0444);
 
         try {
             Http::fake(function () {
@@ -75,7 +92,8 @@ class ProviderErrorMappingTest extends TestCase
                 ->assertJsonPath('code', 'provider_timeout')
                 ->assertJsonPath('provider', 'contifico');
         } finally {
-            @chmod($logFile, 0644);
+            chmod($logFile, 0644);
+            @unlink($logFile);
         }
     }
 

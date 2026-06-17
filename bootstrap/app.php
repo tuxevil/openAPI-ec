@@ -23,6 +23,17 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // ProviderException es un error de negocio esperado (timeout del
+        // proveedor, 4xx/5xx aguas arriba, credenciales invalidas). El
+        // render handler de abajo ya devuelve toda la informacion relevante
+        // al cliente, asi que no necesitamos que el reporter por defecto
+        // intente loguearlo: si el disco de logs esta lleno o el archivo
+        // no es escribible, queremos que la API responda con el 504/502
+        // correspondiente, no que escupa un 500 por una excepcion de Monolog.
+        $exceptions->dontReport([
+            ProviderException::class,
+        ]);
+
         $exceptions->render(function (ProviderException $exception, $request) {
             $details = $exception->details();
             $debug = config('app.debug') === true;
