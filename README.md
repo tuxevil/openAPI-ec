@@ -32,6 +32,7 @@ Servicio HTTP stateless que expone una API REST normalizada para que sistemas in
 - [Estructura del proyecto](#estructura-del-proyecto)
 - [Despliegue](#despliegue)
 - [Contribuir](#contribuir)
+- [Changelog](#changelog)
 - [Licencia](#licencia)
 - [Contacto](#contacto)
 
@@ -501,6 +502,12 @@ docker build -t openapi-ec:latest .
 7. Abre un Pull Request usando la plantilla provista.
 
 ¿Dudas, ideas o quieres discutir el diseño? Usa las [Discussions](https://github.com/tuxevil/openAPI-ec/discussions) en lugar de abrir un issue.
+
+---
+
+## Changelog
+
+Consulta el archivo [`CHANGELOG.md`](CHANGELOG.md) para ver el historial de cambios y las nuevas versiones.
 
 ---
 
